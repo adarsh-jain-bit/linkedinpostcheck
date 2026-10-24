@@ -100,3 +100,10 @@ a { color: var(--accent); }
 .exp-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .exp-filter input[type="number"] { width: 64px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
 .exp-badge { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; background: #fff4e0; color: #8a5a00; font-size: 12px; }
+
+.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+.login-card h1 { font-size: 20px; }
+.login-card p { margin: 0; }
+.login-card input { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+.logout { float: right; }

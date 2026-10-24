@@ -9,7 +9,7 @@ npm install
 npm run dev        # http://localhost:3001
 ```
 
-Posts are stored in `data/posts.json`. Set `INGEST_TOKEN` (see `.env.example`) if the portal is reachable by others.
+Posts are stored in `data/posts.json` locally, or in Upstash Redis when deployed (see **Deploy on Vercel**).
 
 ## Install the extension
 
@@ -26,21 +26,28 @@ Scroll depth, post links, and the portal URL are under **Settings** in the popup
 
 In the portal, search, tick **Only posts with emails** if you want, and click **Export to Excel**. The file has two sheets: **Posts** (one row per post) and **Contacts** (one row per unique email).
 
-## Email HRs (mail sender integration)
+## Email HRs
 
-The portal sends applications through the mail sender project (`../emailsender/mailsender`), which holds the email templates, resumes and Gmail login.
-
-1. In the mail sender folder, make sure `.env.local` has `EMAIL_USER` and `EMAIL_PASS` (a Gmail app password), then run `npm run dev` (port 3002).
-2. In the portal, click **Send ✉** next to an email to review and send one application, or **Email all unsent** to review and send to every email in the current search.
+Click **Send ✉** next to an email to review and send one application, or **Email all unsent** to review and send to every email in the current search. Emails go out from your Gmail (`EMAIL_USER` / `EMAIL_PASS`, a Gmail app password) with your resume attached.
 
 For each email the portal:
 - builds the subject from the post (`Application for <role> [at <company>] | <years> Experience | Immediate Joiner`), or uses the exact subject the post asks for ("Subject line: …");
-- picks the resume: 2.5 yrs when the post asks for under 3 years, otherwise 3.5 yrs;
-- passes the role, company and the post's technologies to the template, which names the role and company and adds a line about the skills you have that the post asks for;
+- picks the template and resume: 2.5 yrs when the post asks for under 3 years, otherwise 3.5 yrs (`resumes/`, templates in `lib/sendmail.ts`);
+- names the role and company in the email and adds a line about the skills you have that the post asks for;
 - names the company only when the post text and the email domain agree, otherwise "your company";
-- remembers sent emails (`data/sent.json`) and won't email the same address twice unless you choose **Send again**.
+- remembers sent emails and won't email the same address twice unless you choose **Send again**.
 
 Bulk sends pause 2 seconds between emails. Gmail allows about 500 emails/day; staying well under that avoids spam folders.
+
+## Deploy on Vercel
+
+1. **Make the GitHub repo private** — it contains your resumes and contact details.
+2. Vercel → your project → **Storage** → **Upstash for Redis** → create a free database and connect it to the project. This adds `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_*`) automatically. Without it, posts aren't saved on Vercel.
+3. Vercel → **Settings → Environment Variables**: add `PORTAL_PASSWORD`, `EMAIL_USER`, `EMAIL_PASS` (see `.env.example`).
+4. Redeploy (Deployments → ⋯ → Redeploy) so the new variables take effect.
+5. In the extension popup → **Settings**: set **Portal URL** to your Vercel address and **Portal password** to `PORTAL_PASSWORD`. Chrome asks to allow the site on the first capture.
+
+Locally nothing changes: without these variables there's no login and posts are saved in `data/`.
 
 ## Notes
 

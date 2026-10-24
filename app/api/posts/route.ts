@@ -17,7 +17,7 @@ export function OPTIONS() {
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? "";
   const [posts, sent] = await Promise.all([searchPosts(q, searchOptionsFrom(req.nextUrl.searchParams)), getSent()]);
-  return NextResponse.json({ posts, sent }, { headers: CORS });
+  return NextResponse.json({ posts, sent, loginEnabled: !!process.env.PORTAL_PASSWORD }, { headers: CORS });
 }
 
 export async function POST(req: NextRequest) {

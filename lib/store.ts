@@ -1,5 +1,4 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { db } from "./db";
 import { extractAll, type Experience } from "./extract";
 
 export type Post = {
@@ -21,68 +20,47 @@ export type Post = {
 
 export type IncomingPost = Partial<Pick<Post, "id" | "url" | "author" | "authorHeadline" | "authorUrl" | "postedAt" | "text" | "searchKeyword">>;
 
-// DATA_DIR lets a test server use separate data
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "posts.json");
-
 async function readAll(): Promise<Post[]> {
-  try {
-    const posts: Post[] = JSON.parse(await fs.readFile(DATA_FILE, "utf8"));
-    // Re-extract on read so improvements to the extractor apply to old posts too
-    return posts.map((p) => ({ ...p, ...extractAll(p.text, p.authorHeadline) }));
-  } catch {
-    return [];
-  }
+  const posts = Object.values(await db.getAll<Post>("posts"));
+  // Re-extract on read so improvements to the extractor apply to old posts too
+  return posts.map((p) => ({ ...p, ...extractAll(p.text, p.authorHeadline) }));
 }
 
-async function writeAll(posts: Post[]) {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  const tmp = `${DATA_FILE}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(posts, null, 2));
-  await fs.rename(tmp, DATA_FILE);
-}
-
-// Serialize writes so concurrent requests don't clobber the file
-let queue: Promise<unknown> = Promise.resolve();
-function locked<T>(fn: () => Promise<T>): Promise<T> {
-  const next = queue.then(fn, fn);
-  queue = next.catch(() => {});
-  return next;
-}
-
-export function savePosts(incoming: IncomingPost[]) {
-  return locked(async () => {
-    const posts = await readAll();
-    const byId = new Map(posts.map((p) => [p.id, p]));
-    let added = 0;
-    for (const raw of incoming) {
-      const text = (raw.text ?? "").trim();
-      if (!text) continue;
-      const fallbackId = `${raw.author}:${text.slice(0, 80)}`;
-      const id = raw.id || raw.url || fallbackId;
-      // Same post captured earlier without a link: replace that entry
-      const previous = byId.get(id) ?? byId.get(fallbackId);
-      if (id !== fallbackId && byId.has(fallbackId)) byId.delete(fallbackId);
-      const authorHeadline = raw.authorHeadline ?? "";
-      const post: Post = {
-        id,
-        url: raw.url || previous?.url || "",
-        author: raw.author ?? "",
-        authorHeadline,
-        authorUrl: raw.authorUrl || previous?.authorUrl || "",
-        postedAt: raw.postedAt ?? "",
-        text,
-        searchKeyword: raw.searchKeyword ?? "",
-        capturedAt: previous?.capturedAt ?? new Date().toISOString(),
-        ...extractAll(text, authorHeadline),
-      };
-      if (!previous) added++;
-      byId.set(id, post);
+export async function savePosts(incoming: IncomingPost[]) {
+  const byId = new Map(Object.entries(await db.getAll<Post>("posts")));
+  const changed: Record<string, Post> = {};
+  const removed: string[] = [];
+  let added = 0;
+  for (const raw of incoming) {
+    const text = (raw.text ?? "").trim();
+    if (!text) continue;
+    const fallbackId = `${raw.author}:${text.slice(0, 80)}`;
+    const id = raw.id || raw.url || fallbackId;
+    // Same post captured earlier without a link: replace that entry
+    const previous = byId.get(id) ?? byId.get(fallbackId);
+    if (id !== fallbackId && byId.has(fallbackId)) {
+      byId.delete(fallbackId);
+      removed.push(fallbackId);
     }
-    const all = [...byId.values()];
-    await writeAll(all);
-    return { added, total: all.length };
-  });
+    const authorHeadline = raw.authorHeadline ?? "";
+    const post: Post = {
+      id,
+      url: raw.url || previous?.url || "",
+      author: raw.author ?? "",
+      authorHeadline,
+      authorUrl: raw.authorUrl || previous?.authorUrl || "",
+      postedAt: raw.postedAt ?? "",
+      text,
+      searchKeyword: raw.searchKeyword ?? "",
+      capturedAt: previous?.capturedAt ?? new Date().toISOString(),
+      ...extractAll(text, authorHeadline),
+    };
+    if (!previous) added++;
+    byId.set(id, post);
+    changed[id] = post;
+  }
+  await db.put("posts", changed, removed);
+  return { added, total: byId.size };
 }
 
 export type SearchOptions = {
@@ -133,25 +111,15 @@ export async function getPost(id: string) {
 
 // Emails already mailed, so the same HR isn't contacted twice
 export type SentRecord = { sentAt: string; postId: string; subject: string };
-const SENT_FILE = path.join(DATA_DIR, "sent.json");
 
-export async function getSent(): Promise<Record<string, SentRecord>> {
-  try {
-    return JSON.parse(await fs.readFile(SENT_FILE, "utf8"));
-  } catch {
-    return {};
-  }
+export function getSent() {
+  return db.getAll<SentRecord>("sent");
 }
 
 export function markSent(email: string, record: SentRecord) {
-  return locked(async () => {
-    const sent = await getSent();
-    sent[email.toLowerCase()] = record;
-    await fs.mkdir(path.dirname(SENT_FILE), { recursive: true });
-    await fs.writeFile(SENT_FILE, JSON.stringify(sent, null, 2));
-  });
+  return db.put("sent", { [email.toLowerCase()]: record });
 }
 
 export function clearPosts() {
-  return locked(() => writeAll([]));
+  return db.clear("posts");
 }

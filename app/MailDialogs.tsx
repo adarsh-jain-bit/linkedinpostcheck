@@ -47,7 +47,7 @@ export function ComposeDialog({
       })
       .catch(async (e) => {
         setError(e.message);
-        // Mail sender down: still show the draft so the subject can be reviewed
+        // Preview failed: still show the draft so the subject can be reviewed
         const d = await mailApi({ action: "draft", postId: post.id, email }).catch(() => null);
         if (d) setDraft(d.draft);
       });
@@ -173,7 +173,7 @@ export function BulkDialog({ targets, onClose, onDone }: { targets: Target[]; on
         patch(i, { state: "sent" });
       } catch (e) {
         patch(i, { state: "failed", error: (e as Error).message });
-        if (/not reachable/i.test((e as Error).message)) break;
+        if (/not set up|Invalid login|auth/i.test((e as Error).message)) break; // Gmail problem: stop
       }
     }
     setRunning(false);

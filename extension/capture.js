@@ -39,6 +39,7 @@ async function sendToPortal(posts, { portal = DEFAULT_PORTAL, token = "" } = {})
   } catch {
     throw new Error(`Can't reach the portal at ${portal}. Is it running (npm run dev)?`);
   }
+  if (res.status === 401) throw new Error("Wrong portal password. Set it in the extension under Settings → Portal password.");
   if (res.status === 404) throw new Error(`${portal} is not the Post Checker portal (got 404). Check the Portal URL.`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || res.statusText);

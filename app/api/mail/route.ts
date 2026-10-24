@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callMailSender, draftFor, EXPERIENCE_LEVELS, type Draft } from "@/lib/mail";
+import { draftFor, EXPERIENCE_LEVELS, type Draft } from "@/lib/mail";
+import { renderEmail, sendApplication } from "@/lib/sendmail";
 import { getPost, getSent, markSent } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 // POST { action: "draft" | "preview" | "send", postId, email, ...overrides }
 //  draft   -> auto-generated subject/role/company/experience for this post
-//  preview -> the personalised email HTML (from the mail sender), nothing is sent
-//  send    -> sends via the mail sender and records the email as sent
+//  preview -> the personalised email HTML, nothing is sent
+//  send    -> sends through Gmail with the resume attached and records the email as sent
 export async function POST(req: NextRequest) {
   // JSON-only: browsers can't send this cross-site without a CORS preflight (which this route
   // doesn't allow), so other websites can't trigger emails through the local portal
@@ -27,15 +28,14 @@ export async function POST(req: NextRequest) {
 
   try {
     if (action === "preview") {
-      const { html } = await callMailSender(draft, true);
-      return NextResponse.json({ draft, html });
+      return NextResponse.json({ draft, html: renderEmail(draft) });
     }
     if (action === "send") {
       const already = (await getSent())[email.toLowerCase()];
       if (already && !force) {
         return NextResponse.json({ error: `Already sent on ${new Date(already.sentAt).toLocaleString()}`, already }, { status: 409 });
       }
-      await callMailSender(draft, false);
+      await sendApplication(draft);
       const record = { sentAt: new Date().toISOString(), postId, subject: draft.subject };
       await markSent(email, record);
       return NextResponse.json({ ok: true, sent: record });

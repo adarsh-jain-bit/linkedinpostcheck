@@ -16,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState<Record<string, SentRecord>>({});
+  const [loginEnabled, setLoginEnabled] = useState(false);
   const [compose, setCompose] = useState<{ post: Post; email: string } | null>(null);
   const [bulk, setBulk] = useState<{ post: Post; email: string }[] | null>(null);
 
@@ -34,6 +35,7 @@ export default function Home() {
       const data = await res.json();
       setPosts(data.posts);
       setSent(data.sent ?? {});
+      setLoginEnabled(!!data.loginEnabled);
     } finally {
       setLoading(false);
     }
@@ -74,6 +76,11 @@ export default function Home() {
   return (
     <main>
       <header>
+        {loginEnabled && (
+          <form className="logout" method="post" action="/api/logout">
+            <button className="link" type="submit">Log out</button>
+          </form>
+        )}
         <h1>LinkedIn Post Checker</h1>
         <p className="muted">
           Capture posts with the browser extension, then search and export roles, emails, companies and technologies.

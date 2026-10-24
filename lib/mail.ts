@@ -1,14 +1,14 @@
 import type { Post } from "./store";
 import { extractCompanies, extractExperience, formatExperience } from "./extract";
 
-// Experience levels understood by the mail sender (each has its own template + resume)
+// Experience levels; each has its own template + resume (see sendmail.ts)
 export const EXPERIENCE_LEVELS = {
   "2yr5mon": { label: "2.5 yrs", subjectLabel: "2.5+ Years" },
   "3years": { label: "3.5 yrs", subjectLabel: "3.5+ Years" },
 } as const;
 export type ExperienceLevel = keyof typeof EXPERIENCE_LEVELS;
 
-// Skills named in the mail sender templates (keep in sync with MY_SKILLS there)
+// Skills named in the email templates (keep in sync with MY_SKILLS in sendmail.ts)
 const MY_SKILLS = new Set(
   ["JavaScript", "TypeScript", "React", "Next.js", "Node.js", "Express", "MongoDB", "MySQL", "Redux", "AWS", "REST", "HTML", "CSS", "Tailwind", "Git"].map((s) => s.toLowerCase())
 );
@@ -16,8 +16,6 @@ const MY_SKILLS = new Set(
 export function matchingSkills(technologies: string[]): string[] {
   return technologies.filter((t) => MY_SKILLS.has(t.toLowerCase()));
 }
-
-export const MAIL_SENDER_URL = (process.env.MAIL_SENDER_URL || "http://localhost:3002").replace(/\/+$/, "");
 
 // Posts asking for under 3 years get the 2.5-year resume; 3+ or unstated gets the 3.5-year one
 export function chooseExperienceLevel(text: string): ExperienceLevel {
@@ -113,21 +111,4 @@ export function draftFor(post: Post, email: string): Draft {
     experienceAsked: experienceAsked(post.text),
     subject: buildSubject(post, experienceLevel, { role, company }),
   };
-}
-
-// Calls the mail sender project's API (server-to-server, so no CORS involved)
-export async function callMailSender(draft: Draft, preview: boolean): Promise<{ html?: string }> {
-  let res: Response;
-  try {
-    res = await fetch(`${MAIL_SENDER_URL}/api/send-mail`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...draft, preview }),
-    });
-  } catch {
-    throw new Error(`Mail sender is not reachable at ${MAIL_SENDER_URL}. Start it with "npm run dev" in the mailsender folder.`);
-  }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.success) throw new Error(data.error || `Mail sender returned ${res.status}`);
-  return data;
 }
