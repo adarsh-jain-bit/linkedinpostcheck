@@ -41,8 +41,10 @@ async function sendToPortal(posts, { portal = DEFAULT_PORTAL, token = "" } = {})
   }
   if (res.status === 401) throw new Error("Wrong portal password. Set it in the extension under Settings → Portal password.");
   if (res.status === 404) throw new Error(`${portal} is not the Post Checker portal (got 404). Check the Portal URL.`);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || res.statusText);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Portal error ${res.status}${res.status === 500 ? " (on Vercel: is the Upstash database connected? Redeploy after adding settings)" : ""}`);
+  }
   return data; // { added, total }
 }
 

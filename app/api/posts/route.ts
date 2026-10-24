@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { usingRedis } from "@/lib/db";
 import { clearPosts, getSent, savePosts, searchOptionsFrom, searchPosts, type IncomingPost } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +31,13 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(posts)) {
     return NextResponse.json({ error: "Expected { posts: [...] }" }, { status: 400, headers: CORS });
   }
-  const result = await savePosts(posts);
-  return NextResponse.json(result, { headers: CORS });
+  try {
+    return NextResponse.json(await savePosts(posts), { headers: CORS });
+  } catch (e) {
+    // On Vercel this is usually a missing database: files can't be written there
+    const error = `Could not save posts: ${(e as Error).message}${usingRedis ? "" : ". No database connected (add Upstash in Vercel → Storage, then redeploy)"}`;
+    return NextResponse.json({ error }, { status: 500, headers: CORS });
+  }
 }
 
 export async function DELETE() {
