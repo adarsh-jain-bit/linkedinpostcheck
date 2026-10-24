@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { width: 330px; margin: 0; padding: 14px; font: 13px system-ui, sans-serif; color: #1c1e21; }
+      h1 { font-size: 15px; margin: 0 0 10px; }
+      h2 { font-size: 12px; margin: 14px 0 4px; color: #65676b; text-transform: uppercase; letter-spacing: 0.04em; }
+      label { display: block; margin: 8px 0 3px; color: #65676b; font-size: 12px; }
+      input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid #dfe1e5; border-radius: 6px; font: inherit; }
+      textarea { resize: vertical; min-height: 64px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+      .row { display: flex; gap: 6px; align-items: center; }
+      .row input[type="number"] { width: 70px; }
+      .check { display: flex; gap: 6px; align-items: center; color: inherit; }
+      .check input { width: auto; }
+      button { width: 100%; margin-top: 10px; padding: 8px; border: 0; border-radius: 6px; background: #0a66c2; color: #fff; cursor: pointer; font-size: 13px; }
+      button.secondary { background: #e8f1fb; color: #0a66c2; }
+      button.danger { background: #fbeaea; color: #c0392b; }
+      button:disabled { opacity: 0.6; cursor: default; }
+      details { margin-top: 12px; }
+      summary { cursor: pointer; color: #65676b; font-size: 12px; }
+      .buttons { display: flex; gap: 6px; }
+      #progress { margin-top: 10px; font-weight: 600; }
+      #status { margin-top: 6px; min-height: 18px; color: #65676b; white-space: pre-wrap; max-height: 160px; overflow-y: auto; font-size: 12px; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <h1>LinkedIn Post Checker</h1>
+
+    <h2>Search &amp; capture</h2>
+    <label for="keywords">Keywords (one search per line)</label>
+    <textarea id="keywords" placeholder="hiring react js indore&#10;hiring node js indore"></textarea>
+    <div class="grid">
+      <div>
+        <label for="datePosted">Date posted</label>
+        <select id="datePosted">
+          <option value="">Any time</option>
+          <option value="past-24h">Past 24 hours</option>
+          <option value="past-week" selected>Past week</option>
+          <option value="past-month">Past month</option>
+        </select>
+      </div>
+      <div>
+        <label for="sortBy">Sort by</label>
+        <select id="sortBy">
+          <option value="date_posted" selected>Latest</option>
+          <option value="relevance">Relevance</option>
+        </select>
+      </div>
+    </div>
+    <label for="delay">Pause between searches</label>
+    <div class="row"><input id="delay" type="number" min="5" max="120" value="15" /><span>seconds (min 5)</span></div>
+    <button id="runSearch">Search &amp; capture all</button>
+
+    <h2>Current page</h2>
+    <button id="capture" class="secondary">Capture this page</button>
+
+    <button id="stop" class="danger" hidden>Stop</button>
+    <div id="progress"></div>
+    <div id="status"></div>
+
+    <details>
+      <summary>Settings</summary>
+      <label for="portal">Portal URL</label>
+      <input id="portal" placeholder="http://localhost:3001" />
+      <label for="token">Ingest token (optional)</label>
+      <input id="token" type="password" />
+      <label for="pages">Scroll pages to load per search</label>
+      <div class="row"><input id="pages" type="number" min="0" max="50" value="5" /><span>0 = only visible posts</span></div>
+      <label class="check"><input id="links" type="checkbox" checked /> Get post links (about 1s per post)</label>
+      <div class="buttons">
+        <button id="open" class="secondary">Open portal</button>
+        <button id="debug" class="secondary">Copy debug info</button>
+      </div>
+    </details>
+
+    <script src="capture.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
